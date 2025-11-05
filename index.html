@@ -157,11 +157,12 @@
                 <span class="badge rounded-pill badge-soft" data-automation-id="records-count">0</span>
               </div>
               <div class="table-wrap mt-3">
-                <table class="table table-sm table-hover align-middle" data-automation-id="records-table">
+                <table class=\"table table-hover table-striped table-bordered align-middle\" data-automation-id="records-table">
                   <thead></thead>
                   <tbody></tbody>
                 </table>
               </div>
+              <div class="alert alert-secondary text-center mt-3 d-none" data-automation-id="empty-state">No records yet. Use the form to add one.</div>
             </div>
           </div>
         </div>
@@ -332,7 +333,7 @@
     form.innerHTML = mod.columns.map(c=>buildField(c, `${mod.slug}-create`)).join('');
 
     const thead = $('thead', node);
-    thead.innerHTML = `<tr>${mod.columns.map(c=>`<th scope="col">${c.label}</th>`).join('')}<th scope="col" class="text-end">Actions</th></tr>`;
+    thead.innerHTML = `<tr>${mod.columns.map(c=>`<th scope=\"col\">${c.label}</th>`).join('')}<th scope=\"col\" class=\"text-end\">Actions</th></tr>`;
 
     const tbody = $('tbody', node); tbody.id = `tbody-${mod.slug}`;
 
@@ -347,6 +348,9 @@
 
     const resetBtn = $('[data-automation-id="btn-reset"]', node);
     resetBtn.id = `reset-${mod.slug}`;
+
+    const emptyState = $('[data-automation-id="empty-state"]', node);
+    if (emptyState) emptyState.id = `empty-${mod.slug}`;
 
     // Wire events
     createBtn.addEventListener('click', (e)=>{ e.preventDefault(); createRecord(mod); });
@@ -390,22 +394,25 @@
     );
 
     const html = filtered.map(rec => {
-      const tds = mod.columns.map(c=>`<td><span data-automation-id="cell-${mod.slug}-${c.name}">${escapeHtml(rec[c.name]||'')}</span></td>`).join('');
-      return `<tr data-id="${rec.id}">
+      const tds = mod.columns.map(c=>`<td><span data-automation-id=\"cell-${mod.slug}-${c.name}\">${escapeHtml(rec[c.name]||'')}</span></td>`).join('');
+      return `<tr data-id=\"${rec.id}\">
         ${tds}
-        <td class="text-end">
-          <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-info" title="Edit" data-bs-toggle="tooltip" data-automation-id="btn-edit" onclick="openEdit('${mod.slug}','${rec.id}')">Edit</button>
-            <button class="btn btn-outline-danger" title="Delete" data-bs-toggle="tooltip" data-automation-id="btn-delete" onclick="openDelete('${mod.slug}','${rec.id}')">Delete</button>
+        <td class=\"text-end\">
+          <div class=\"btn-group btn-group-sm\">
+            <button class=\"btn btn-outline-info\" title=\"Edit\" data-bs-toggle=\"tooltip\" data-automation-id=\"btn-edit\" onclick=\"openEdit('${mod.slug}','${rec.id}')\">Edit</button>
+            <button class=\"btn btn-outline-danger\" title=\"Delete\" data-bs-toggle=\"tooltip\" data-automation-id=\"btn-delete\" onclick=\"openDelete('${mod.slug}','${rec.id}')\">Delete</button>
           </div>
         </td>
       </tr>`;
     }).join('');
 
-    tbody.innerHTML = html || `<tr><td colspan="${mod.columns.length+1}" class="text-center small-muted">No records</td></tr>`;
+    tbody.innerHTML = html;
+
+    const empty = document.getElementById(`empty-${mod.slug}`);
+    if (empty) empty.classList.toggle('d-none', filtered.length > 0);
 
     const countSpan = document.getElementById(`records-${mod.slug}`);
-    countSpan.textContent = `${filtered.length} / ${list.length}`;
+    countSpan.textContent = `${list.length}`;
   };
 
   const escapeHtml = (s) => s.replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
