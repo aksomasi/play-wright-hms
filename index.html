@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Hospital Management System – LocalStorage (Bootstrap 5)</title>
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#0f172a;--panel:#0b1220;--text:#e5e7eb;--muted:#9aa3b2;--accent:#7c3aed;--accent2:#22d3ee;--border:#1f2937
+    }
+    body{background:linear-gradient(135deg,var(--bg),var(--panel)); color:var(--text)}
+    .navbar{background:rgba(13,17,23,.65);backdrop-filter: blur(6px); border-bottom:1px solid var(--border)}
+    .sidebar{background:rgba(13,17,23,.55);border-right:1px solid var(--border);min-height:calc(100vh - 56px)}
+    .sidebar .nav-link{color:var(--muted)}
+    .sidebar .nav-link.active{background:linear-gradient(90deg,var(--accent),var(--accent2)); color:white}
+    .card{background:#0f1525;border:1px solid var(--border)}
+    .form-label,.form-text,.table{color:var(--text)}
+    .table thead th{color:#bcd;}
+    .badge-soft{background:#111a2e;border:1px solid #1d2a47;color:#a9c1ff}
+    .required::after{content:" *"; color:#f87171}
+    .small-muted{color:var(--muted)}
+    .pointer{cursor:pointer}
+    .btn-accent{background:var(--accent); color:#fff}
+    .btn-accent:hover{background:#6d2edc; color:#fff}
+    .search-input{background:#0b1220;border:1px solid var(--border);color:var(--text)}
+    .tooltip-inner{max-width: 320px; text-align:left}
+    .table-wrap{overflow:auto}
+  </style>
+</head>
+<body>
+  <!-- Top Nav -->
+  <nav class="navbar navbar-expand-lg" id="topNavbar" data-automation-id="navbar">
+    <div class="container-fluid">
+      <a class="navbar-brand text-white fw-semibold" href="#" id="brandTitle" data-automation-id="brand-title">
+        🏥 HMS <span class="small-muted">LocalStorage</span>
+      </a>
+      <div class="d-flex gap-2">
+        <button class="btn btn-sm btn-outline-light" id="exportBtn" data-automation-id="btn-export" title="Download a JSON backup of all data" data-bs-toggle="tooltip">Export JSON</button>
+        <label class="btn btn-sm btn-outline-info mb-0 pointer" title="Import data from a JSON backup" data-bs-toggle="tooltip">
+          Import JSON <input type="file" id="importInput" data-automation-id="input-import" class="d-none" accept="application/json" />
+        </label>
+        <button class="btn btn-sm btn-danger" id="clearAllBtn" data-automation-id="btn-clear-all" title="Clear ALL LocalStorage data for this app" data-bs-toggle="tooltip">Clear All</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container-fluid">
+    <div class="row">
+      <!-- Sidebar -->
+      <aside class="col-12 col-md-3 col-lg-2 sidebar p-3">
+        <h6 class="text-uppercase small text-secondary mb-3">Modules</h6>
+        <nav class="nav nav-pills flex-column" id="sideNav" role="tablist">
+          <a class="nav-link active mb-2" id="tab-inpatients" data-bs-toggle="pill" href="#panel-inpatients" role="tab" aria-controls="panel-inpatients" aria-selected="true" data-automation-id="nav-inpatients">
+            Inpatients <span class="badge rounded-pill ms-1 badge-soft" id="count-inpatients" data-automation-id="count-inpatients">0</span>
+          </a>
+          <a class="nav-link mb-2" id="tab-outpatients" data-bs-toggle="pill" href="#panel-outpatients" role="tab" aria-controls="panel-outpatients" aria-selected="false" data-automation-id="nav-outpatients">
+            Outpatients <span class="badge rounded-pill ms-1 badge-soft" id="count-outpatients" data-automation-id="count-outpatients">0</span>
+          </a>
+          <a class="nav-link mb-2" id="tab-roombooking" data-bs-toggle="pill" href="#panel-roombooking" role="tab" aria-controls="panel-roombooking" aria-selected="false" data-automation-id="nav-roombooking">
+            Room Booking <span class="badge rounded-pill ms-1 badge-soft" id="count-roombooking" data-automation-id="count-roombooking">0</span>
+          </a>
+          <a class="nav-link mb-2" id="tab-lab" data-bs-toggle="pill" href="#panel-lab" role="tab" aria-controls="panel-lab" aria-selected="false" data-automation-id="nav-lab">
+            Lab Records <span class="badge rounded-pill ms-1 badge-soft" id="count-lab" data-automation-id="count-lab">0</span>
+          </a>
+          <a class="nav-link" id="tab-medicines" data-bs-toggle="pill" href="#panel-medicines" role="tab" aria-controls="panel-medicines" aria-selected="false" data-automation-id="nav-medicines">
+            Medicines <span class="badge rounded-pill ms-1 badge-soft" id="count-medicines" data-automation-id="count-medicines">0</span>
+          </a>
+        </nav>
+        <hr class="border-secondary"/>
+        <div class="small small-muted">Tip: Every input has <code>placeholder</code>, <code>title</code>, and <code>data-automation-id</code> for testing.
+          <span class="ms-2" id="status-text" data-automation-id="status-text"></span>
+        </div>
+      </aside>
+
+      <!-- Main -->
+      <main class="col-12 col-md-9 col-lg-10 p-3">
+        <div id="alerts"></div>
+        <div class="tab-content" id="tabContent">
+
+          <!-- Generic panel template instances get generated dynamically by JS below -->
+
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Edit Modal (reused for all modules) -->
+  <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="editModalTitle" data-automation-id="edit-modal-title">Edit Record</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <form id="editForm" data-automation-id="edit-form"></form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-accent" id="saveEditBtn" data-automation-id="btn-save-edit">Save changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Confirm Modal -->
+  <div class="modal fade" id="confirmDeleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Confirm Delete</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete this record?</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" id="confirmDeleteBtn" data-automation-id="btn-confirm-delete">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <template id="panel-template">
+    <section class="tab-pane fade show" role="tabpanel">
+      <div class="d-flex align-items-center justify-content-between mb-3">
+        <div>
+          <h3 class="mb-0"></h3>
+          <small class="small-muted">Manage records. <span data-automation-id="module-help"></span></small>
+        </div>
+        <div class="input-group" style="max-width: 360px;">
+          <span class="input-group-text">Search</span>
+          <input type="text" class="form-control search-input" placeholder="type to filter..." title="Filter records in the table" data-automation-id="search-input" />
+        </div>
+      </div>
+      <div class="row g-3">
+        <div class="col-12 col-xl-5">
+          <div class="card">
+            <div class="card-body">
+              <h5>Add / Create</h5>
+              <form class="needs-validation" novalidate data-automation-id="create-form"></form>
+              <div class="d-flex gap-2 mt-3">
+                <button class="btn btn-accent" data-automation-id="btn-create">Create</button>
+                <button class="btn btn-outline-secondary" type="reset" data-automation-id="btn-reset">Reset</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-12 col-xl-7">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex align-items-center justify-content-between">
+                <h5 class="mb-0">Records</h5>
+                <span class="badge rounded-pill badge-soft" data-automation-id="records-count">0</span>
+              </div>
+              <div class="table-wrap mt-3">
+                <table class="table table-sm table-hover align-middle" data-automation-id="records-table">
+                  <thead></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </template>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  // ------------------------
+  // Utilities
+  // ------------------------
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  const storage = {
+    read(key){
+      try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
+    },
+    write(key, value){ localStorage.setItem(key, JSON.stringify(value)); },
+    clearAll(){ Object.keys(localStorage).filter(k=>k.startsWith('hms_')).forEach(k=>localStorage.removeItem(k)); }
+  };
+
+  const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36).slice(-4);
+  const showAlert = (msg, type='success')=>{
+    const wrap = $('#alerts');
+    const id = uid();
+    wrap.insertAdjacentHTML('beforeend', `
+      <div class="alert alert-${type} alert-dismissible fade show" role="alert" id="alert-${id}" data-automation-id="alert">
+        ${msg}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+      </div>`);
+    setTimeout(()=>{ const el=$(`#alert-${id}`); if(el){ bootstrap.Alert.getOrCreateInstance(el).close();}}, 4000);
+  };
+
+  const updateCounts = () => {
+    Object.values(MODULES).forEach(m=>{
+      const count = storage.read(m.key).length;
+      const badge = $(`#count-${m.slug}`);
+      if(badge) badge.textContent = count;
+    });
+  };
+
+  // ------------------------
+  // Module Definitions
+  // ------------------------
+  const MODULES = {
+    inpatients: {
+      slug: 'inpatients',
+      title: 'Inpatients',
+      help: 'Admit patients with ward/bed allocation and attending doctor.',
+      key: 'hms_inpatients',
+      columns: [
+        {name:'name', label:'Patient Name', placeholder:'e.g., Ramesh Kumar', required:true},
+        {name:'age', label:'Age', type:'number', placeholder:'e.g., 45', required:true, min:0},
+        {name:'gender', label:'Gender', type:'select', options:['Male','Female','Other'], required:true},
+        {name:'admitDate', label:'Admit Date', type:'date', required:true},
+        {name:'ward', label:'Ward', placeholder:'e.g., General / ICU', required:true},
+        {name:'bed', label:'Bed No', placeholder:'e.g., B-12', required:true},
+        {name:'doctor', label:'Doctor', placeholder:'e.g., Dr. Mehta', required:true}
+      ]
+    },
+    outpatients: {
+      slug: 'outpatients',
+      title: 'Outpatients',
+      help: 'Register walk-in patients for consultation.',
+      key: 'hms_outpatients',
+      columns: [
+        {name:'name', label:'Patient Name', placeholder:'e.g., Sita Devi', required:true},
+        {name:'age', label:'Age', type:'number', placeholder:'e.g., 30', required:true, min:0},
+        {name:'gender', label:'Gender', type:'select', options:['Male','Female','Other'], required:true},
+        {name:'visitDate', label:'Visit Date', type:'date', required:true},
+        {name:'department', label:'Department', type:'select', options:['General','ENT','Ortho','Neuro','Gyn'], required:true},
+        {name:'doctor', label:'Doctor', placeholder:'e.g., Dr. Rao', required:true}
+      ]
+    },
+    roombooking: {
+      slug: 'roombooking',
+      title: 'Room Booking',
+      help: 'Allocate rooms for procedures or stays.',
+      key: 'hms_roombooking',
+      columns: [
+        {name:'roomNo', label:'Room No', placeholder:'e.g., 301', required:true},
+        {name:'type', label:'Room Type', type:'select', options:['General','Twin Share','Deluxe','ICU'], required:true},
+        {name:'patient', label:'Patient Name', placeholder:'e.g., Mahesh'},
+        {name:'from', label:'From', type:'datetime-local', required:true},
+        {name:'to', label:'To', type:'datetime-local', required:true},
+        {name:'notes', label:'Notes', type:'textarea', placeholder:'Any special instructions'}
+      ]
+    },
+    lab: {
+      slug: 'lab',
+      title: 'Lab Records',
+      help: 'Record lab test orders and results.',
+      key: 'hms_lab',
+      columns: [
+        {name:'patient', label:'Patient', placeholder:'e.g., Anitha', required:true},
+        {name:'test', label:'Test', type:'select', options:['CBC','LFT','KFT','Thyroid','Lipid Profile','X-Ray'], required:true},
+        {name:'orderedOn', label:'Ordered On', type:'date', required:true},
+        {name:'status', label:'Status', type:'select', options:['Pending','In-Progress','Completed'], required:true},
+        {name:'result', label:'Result', type:'textarea', placeholder:'Enter result (if completed)'}
+      ]
+    },
+    medicines: {
+      slug: 'medicines',
+      title: 'Medicines',
+      help: 'Maintain medicine inventory with stock levels.',
+      key: 'hms_medicines',
+      columns: [
+        {name:'name', label:'Medicine Name', placeholder:'e.g., Paracetamol 650mg', required:true},
+        {name:'batch', label:'Batch No', placeholder:'e.g., BATCH-123', required:true},
+        {name:'expiry', label:'Expiry', type:'month', required:true},
+        {name:'qty', label:'Quantity', type:'number', placeholder:'e.g., 200', required:true, min:0},
+        {name:'price', label:'Unit Price (₹)', type:'number', placeholder:'e.g., 4.50', step:'0.01', required:true}
+      ]
+    }
+  };
+
+  // ------------------------
+  // Build UI from MODULES
+  // ------------------------
+  const buildField = (col, prefix) => {
+    const id = `${prefix}-${col.name}`;
+    const common = `id="${id}" name="${col.name}" data-automation-id="${id}" title="${col.label}" placeholder="${col.placeholder||''}"`;
+    const required = col.required ? 'required' : '';
+    const formText = col.placeholder ? `<div class="form-text small-muted">${col.placeholder}</div>` : '';
+    const labelCls = `form-label ${col.required? 'required':''}`;
+
+    switch(col.type){
+      case 'number':
+        return `<div class="mb-3"><label for="${id}" class="${labelCls}">${col.label}</label>
+          <input type="number" class="form-control" ${common} min="${col.min??''}" step="${col.step??'1'}" ${required} />${formText}</div>`;
+      case 'date':
+        return `<div class="mb-3"><label for="${id}" class="${labelCls}">${col.label}</label>
+          <input type="date" class="form-control" ${common} ${required} />${formText}</div>`;
+      case 'datetime-local':
+        return `<div class="mb-3"><label for="${id}" class="${labelCls}">${col.label}</label>
+          <input type="datetime-local" class="form-control" ${common} ${required} />${formText}</div>`;
+      case 'month':
+        return `<div class="mb-3"><label for="${id}" class="${labelCls}">${col.label}</label>
+          <input type="month" class="form-control" ${common} ${required} />${formText}</div>`;
+      case 'select':
+        return `<div class="mb-3"><label for="${id}" class="${labelCls}">${col.label}</label>
+          <select class="form-select" ${common} ${required}>
+            <option value="" disabled selected>Select ${col.label}</option>
+            ${col.options.map(o=>`<option value="${o}">${o}</option>`).join('')}
+          </select>${formText}</div>`;
+      case 'textarea':
+        return `<div class="mb-3"><label for="${id}" class="${labelCls}">${col.label}</label>
+          <textarea rows="3" class="form-control" ${common} ${required}></textarea>${formText}</div>`;
+      default:
+        return `<div class="mb-3"><label for="${id}" class="${labelCls}">${col.label}</label>
+          <input type="text" class="form-control" ${common} ${required} />${formText}</div>`;
+    }
+  };
+
+  const buildPanel = (mod) => {
+    const tpl = document.getElementById('panel-template');
+    const node = tpl.content.firstElementChild.cloneNode(true);
+    node.id = `panel-${mod.slug}`;
+    if(mod.slug==='inpatients') node.classList.add('active');
+
+    $('h3', node).textContent = mod.title;
+    $('[data-automation-id="module-help"]', node).textContent = mod.help;
+
+    const form = $('[data-automation-id="create-form"]', node);
+    form.id = `form-${mod.slug}`;
+    form.innerHTML = mod.columns.map(c=>buildField(c, `${mod.slug}-create`)).join('');
+
+    const thead = $('thead', node);
+    thead.innerHTML = `<tr>${mod.columns.map(c=>`<th scope="col">${c.label}</th>`).join('')}<th scope="col" class="text-end">Actions</th></tr>`;
+
+    const tbody = $('tbody', node); tbody.id = `tbody-${mod.slug}`;
+
+    const search = $('[data-automation-id="search-input"]', node);
+    search.id = `search-${mod.slug}`;
+
+    const count = $('[data-automation-id="records-count"]', node);
+    count.id = `records-${mod.slug}`;
+
+    const createBtn = $('[data-automation-id="btn-create"]', node);
+    createBtn.id = `create-${mod.slug}`;
+
+    const resetBtn = $('[data-automation-id="btn-reset"]', node);
+    resetBtn.id = `reset-${mod.slug}`;
+
+    // Wire events
+    createBtn.addEventListener('click', (e)=>{ e.preventDefault(); createRecord(mod); });
+    resetBtn.addEventListener('click', ()=> form.reset());
+    search.addEventListener('input', ()=> renderTable(mod));
+
+    return node;
+  };
+
+  // ------------------------
+  // CRUD Logic
+  // ------------------------
+  const createRecord = (mod) => {
+    const form = document.getElementById(`form-${mod.slug}`);
+    if(!form.checkValidity()){
+      form.classList.add('was-validated');
+      showAlert('Please fill all required fields.', 'warning');
+      return;
+    }
+    const record = { id: uid() };
+    mod.columns.forEach(c=>{ record[c.name] = document.getElementById(`${mod.slug}-create-${c.name}`).value.trim(); });
+    const list = storage.read(mod.key);
+    list.push(record);
+    storage.write(mod.key, list);
+    form.reset();
+    form.classList.remove('was-validated');
+    showAlert(`${mod.title}: record created.`);
+    renderTable(mod);
+    updateCounts();
+  };
+
+  let deleteCtx = { mod:null, id:null };
+
+  const renderTable = (mod) => {
+    const tbody = document.getElementById(`tbody-${mod.slug}`);
+    const search = document.getElementById(`search-${mod.slug}`)?.value.toLowerCase() || '';
+    const list = storage.read(mod.key);
+
+    const filtered = list.filter(rec =>
+      search === '' || Object.values(rec).some(v => String(v).toLowerCase().includes(search))
+    );
+
+    const html = filtered.map(rec => {
+      const tds = mod.columns.map(c=>`<td><span data-automation-id="cell-${mod.slug}-${c.name}">${escapeHtml(rec[c.name]||'')}</span></td>`).join('');
+      return `<tr data-id="${rec.id}">
+        ${tds}
+        <td class="text-end">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-info" title="Edit" data-bs-toggle="tooltip" data-automation-id="btn-edit" onclick="openEdit('${mod.slug}','${rec.id}')">Edit</button>
+            <button class="btn btn-outline-danger" title="Delete" data-bs-toggle="tooltip" data-automation-id="btn-delete" onclick="openDelete('${mod.slug}','${rec.id}')">Delete</button>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    tbody.innerHTML = html || `<tr><td colspan="${mod.columns.length+1}" class="text-center small-muted">No records</td></tr>`;
+
+    const countSpan = document.getElementById(`records-${mod.slug}`);
+    countSpan.textContent = `${filtered.length} / ${list.length}`;
+  };
+
+  const escapeHtml = (s) => s.replace(/[&<>"']/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+
+  window.openEdit = (slug,id)=>{
+    const mod = MODULES[slug];
+    const list = storage.read(mod.key);
+    const rec = list.find(r=>r.id===id);
+    if(!rec) return;
+
+    const form = $('#editForm');
+    form.innerHTML = mod.columns.map(c=>{
+      const col = {...c};
+      const v = rec[c.name] ?? '';
+      const field = buildField(col, `${slug}-edit`);
+      return field.replace(`value="${col.placeholder||''}"`, '').replace('></textarea>', `>${escapeHtml(v)}</textarea>`)
+        .replace('selected></option>', 'selected></option>');
+    }).join('');
+
+    // set current values after render
+    mod.columns.forEach(c=>{
+      const el = document.getElementById(`${slug}-edit-${c.name}`);
+      if(!el) return;
+      if(c.type==='textarea') el.value = rec[c.name]||'';
+      else el.value = rec[c.name]||'';
+    });
+
+    $('#saveEditBtn').onclick = ()=>{
+      const formEl = $('#editForm');
+      if(!formEl.checkValidity()){ formEl.classList.add('was-validated'); return; }
+      mod.columns.forEach(c=>{ rec[c.name] = document.getElementById(`${slug}-edit-${c.name}`).value.trim(); });
+      storage.write(mod.key, list);
+      showAlert(`${mod.title}: record updated.`);
+      renderTable(mod);
+      updateCounts();
+      bootstrap.Modal.getInstance($('#editModal')).hide();
+    };
+
+    $('#editModalTitle').textContent = `Edit ${mod.title} Record`;
+    new bootstrap.Modal($('#editModal')).show();
+  };
+
+  window.openDelete = (slug,id)=>{
+    deleteCtx.mod = MODULES[slug];
+    deleteCtx.id = id;
+    new bootstrap.Modal($('#confirmDeleteModal')).show();
+  };
+
+  $('#confirmDeleteBtn').addEventListener('click', ()=>{
+    const {mod,id} = deleteCtx;
+    const list = storage.read(mod.key).filter(r=>r.id!==id);
+    storage.write(mod.key, list);
+    showAlert(`${mod.title}: record deleted.`, 'danger');
+    renderTable(mod);
+    updateCounts();
+    bootstrap.Modal.getInstance($('#confirmDeleteModal')).hide();
+  });
+
+  // ------------------------
+  // Export / Import / Clear
+  // ------------------------
+  $('#exportBtn').addEventListener('click', ()=>{
+    const dump = {};
+    Object.values(MODULES).forEach(m=> dump[m.key] = storage.read(m.key));
+    const blob = new Blob([JSON.stringify(dump,null,2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `hms_backup_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+
+  $('#importInput').addEventListener('change', (e)=>{
+    const file = e.target.files?.[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      try{
+        const data = JSON.parse(reader.result);
+        Object.values(MODULES).forEach(m=>{
+          if(Array.isArray(data[m.key])) storage.write(m.key, data[m.key]);
+        });
+        showAlert('Data imported successfully.');
+        Object.values(MODULES).forEach(renderTable);
+        updateCounts();
+      }catch(err){ showAlert('Invalid JSON selected.','danger'); }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  });
+
+  $('#clearAllBtn').addEventListener('click', ()=>{
+    if(!confirm('This will delete ALL data for HMS in LocalStorage. Continue?')) return;
+    storage.clearAll();
+    Object.values(MODULES).forEach(renderTable);
+    updateCounts();
+    showAlert('All HMS data cleared.','danger');
+  });
+
+  // ------------------------
+  // Init
+  // ------------------------
+  const initTooltips = ()=> $$('[data-bs-toggle="tooltip"]').forEach(el=> new bootstrap.Tooltip(el));
+
+  const mountModules = ()=>{
+    const content = document.getElementById('tabContent');
+    Object.values(MODULES).forEach((mod, idx)=>{
+      const panel = buildPanel(mod);
+      content.appendChild(panel);
+      renderTable(mod);
+    });
+    // set first panel active
+    $('#panel-inpatients')?.classList.add('active','show');
+  };
+
+  document.addEventListener('DOMContentLoaded', ()=>{
+    mountModules();
+    updateCounts();
+    initTooltips();
+    $('#status-text').textContent = 'Ready';
+  });
+  </script>
+</body>
+</html>
